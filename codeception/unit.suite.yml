@@ -5,4 +5,12 @@
 
 class_name: CodeGuy
 modules:
-    enabled: [CodeHelper]
+    enabled: [CodeHelper, Db]
+    config:
+        Db:
+            dsn: 'mysql:host=localhost;dbname=phalcon_incubator'
+            user: 'phalcon'
+            password: 'incubator'
+            dump: 'codeception/_data/dump.sql'
+            populate: true
+            cleanup: false
