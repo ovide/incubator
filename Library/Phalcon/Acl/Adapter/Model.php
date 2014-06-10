@@ -1,6 +1,4 @@
-<?php
-
-namespace Phalcon\Acl\Adapter;
+<?php namespace Phalcon\Acl\Adapter;
 
 use Phalcon\Acl;
 use Phalcon\Acl\Role;
@@ -28,9 +26,9 @@ class Model extends Adapter
      * @var string Model\Access
      */
     protected $modelAccess;
-    
+
     /**
-     * 
+     *
      * @param string $roleModel
      * @param string $resourceModel
      * @param string $accessModel
@@ -41,19 +39,23 @@ class Model extends Adapter
         $Iaccess   = '\Phalcon\Acl\Adapter\Model\Access';
         $Iresource = '\Phalcon\Acl\Adapter\Model\Resource';
         $not       = 'is not a subclass of';
-        
-        if (!is_subclass_of($roleModel, $Irole))
+
+
+
+
+        //if (!in_array($Irole, class_implements($roleModel)))
+		if (!is_subclass_of($roleModel, $Irole))
             throw new Exception ("$roleModel $not $Irole");
         if (!is_subclass_of($resourceModel, $Iresource))
             throw new Exception ("$resourceModel $not $Iresource");
         if (!is_subclass_of($accessModel, $Iaccess))
             throw new Exception ("$accessModel $not $Iaccess");
-        
+
         $this->modelRole     = $roleModel;
         $this->modelResource = $resourceModel;
         $this->modelAccess   = $accessModel;
     }
-    
+
     /**
      * Do a role inherit from another existing role
      *
@@ -62,11 +64,13 @@ class Model extends Adapter
      */
     public function addInherit($roleName, $roleToInherit)
     {
-        /* @var $role Model\Role */
-        $role    = Model\Role::findFirst($roleName);
-        $inherit = Model\Role::findFirst($roleToInherit);
-        if ($role && $inherit)
-            $role->addInherit($inherit);
+		$Role = $this->modelRole;
+		if ($this->isRole($roleName) && $this->isRole($roleToInherit))
+		{
+			$child = $Role::findFirst(array('name = :name:', 'bind' => array('name' => $roleName)));
+            $child->setInherit($roleToInherit);
+			$r = $child->update();
+		}
     }
 
     /**
@@ -81,13 +85,17 @@ class Model extends Adapter
      */
     public function addResource($resource, $accessList=null)
     {
-        $model = Model\Resource::findFirst($resource->getName());
+		$ResourceModel = $this->modelResource;
+        $model = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource->getName())));
         if (!$model) {
-            $model = new Model\Resource();
+            $model = new $ResourceModel();
             $model->setName($resource->getName());
             $model->setDescription($resource->getDescription());
         }
-        $model->addOperation($accessList);
+
+		if(count($accessList)) {
+			$model->addOperations($accessList);
+		}
         $model->save();
     }
 
@@ -99,7 +107,13 @@ class Model extends Adapter
      */
     public function addResourceAccess($resourceName, $accessList)
     {
-        
+		$ResourceModel = $this->modelResource;
+		$model = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
+		if ($model && count($accessList))
+		{
+			$model->addOperations($accessList);
+			$model->save();
+		}
     }
 
     /**
@@ -112,15 +126,20 @@ class Model extends Adapter
      */
     public function addRole($role, $accessInherits = null)
     {
-        $model = Model\Role::findFirst($role->getDescription());
-        if (!$model) {
-            $model = new Model\Role();
+		$Role = $this->modelRole;
+		if ($this->isRole($role->getName()))
+			$model = $Role::findFirst(array('name = :name:', 'bind' => array('name' => $role->getName())));
+        else
+		{
+            $model = new $Role();
             $model->setName($role->getName());
             $model->setDescription($role->getDescription());
         }
-        $model->addInherit($accessInherits);
-        $model->save();
-    }
+		if ($accessInherits && $this->isRole($accessInherits)) {
+			$model->setInherit($accessInherits);
+		}
+        if ($model->save()) $this->_activeRole = $role;
+	}
 
     /**
      * Allow access to a role on a resource
@@ -131,7 +150,12 @@ class Model extends Adapter
      */
     public function allow($roleName, $resourceName, $access)
     {
-        
+		$AccessModel   = $this->modelAccess;
+		$RoleModel     = $this->modelRole;
+		$ResourceModel = $this->modelResource;
+		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $role)));
+		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource)));
+		$AccessModel::allow($roleRow, $resourceRow, $access);
     }
 
     /**
@@ -144,7 +168,12 @@ class Model extends Adapter
      */
     public function deny($roleName, $resourceName, $access)
     {
-        
+		$AccessModel   = $this->modelAccess;
+		$RoleModel     = $this->modelRole;
+		$ResourceModel = $this->modelResource;
+		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $role)));
+		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource)));
+		$AccessModel::deny($roleRow, $resourceRow, $access);
     }
 
     /**
@@ -155,7 +184,13 @@ class Model extends Adapter
      */
     public function dropResourceAccess($resourceName, $accessList)
     {
-        
+		$ResourceModel = $this->modelResource;
+		$model = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
+		if ($model && count($accessList))
+		{
+			$model->dropOperations($accessList);
+			$model->save();
+		}
     }
 
     /**
@@ -165,8 +200,9 @@ class Model extends Adapter
      */
     public function getResources()
     {
-        
-    }
+		$ResourceModel = $this->modelResource;
+		return $ResourceModel::find();
+	}
 
     /**
      * Return an array with every role registered in the list
@@ -175,7 +211,8 @@ class Model extends Adapter
      */
     public function getRoles()
     {
-        
+		$RolesModel = $this->modelRole;
+		return $RolesModel::find();
     }
 
     /**
@@ -188,7 +225,12 @@ class Model extends Adapter
      */
     public function isAllowed($role, $resource, $access)
     {
-        
+		$AccessModel   = $this->modelAccess;
+		$RoleModel     = $this->modelRole;
+		$ResourceModel = $this->modelResource;
+		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $role)));
+		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource)));
+		return $AccessModel::isAllowed($roleRow, $resourceRow, $access);
     }
 
     /**
@@ -199,7 +241,9 @@ class Model extends Adapter
      */
     public function isResource($resourceName)
     {
-        
+		$Resource = $this->modelResource;
+		$row = $Resource::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
+		return (bool) $row;
     }
 
     /**
@@ -210,7 +254,9 @@ class Model extends Adapter
      */
     public function isRole($roleName)
     {
-        
+		$Role = $this->modelRole;
+		$row = $Role::findFirst(array('name = :name:', 'bind' => array('name' => $roleName)));
+		return (bool) $row;
     }
 
 }

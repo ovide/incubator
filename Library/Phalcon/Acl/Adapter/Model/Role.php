@@ -7,6 +7,6 @@ interface Role extends ModelInterface, RoleInterface
 {
     public function setName($name);
     public function setDescription($description);
-    public function addInherit(Role $inherit);
-    public function dropInherit(Role $inherit);
+    public function setInherit($inherit);
+    public function clearInherit();
 }

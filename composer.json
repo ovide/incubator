@@ -18,7 +18,8 @@
     "require-dev": {
         "phpunit/phpunit": "3.7.*",
         "squizlabs/php_codesniffer": "1.*",
-        "codeception/codeception": "*"
+        "codeception/codeception": "*",
+		"digitronac/phalcon-ide-stubs" : "1.3.0"
     },
     "autoload": {
         "psr-0": {

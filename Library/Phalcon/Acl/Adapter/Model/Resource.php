@@ -17,9 +17,9 @@ interface Resource extends ModelInterface, ResourceInterface
     /**
      * @param string[] $operations
      */
-    public function addOperation($operations);
+    public function addOperations($operations);
     /**
      * @param string[] $operations
      */
-    public function dropOperation($operations);
+    public function dropOperations($operations);
 }
