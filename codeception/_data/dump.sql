@@ -50,8 +50,8 @@ DROP TABLE IF EXISTS `acl_access`;
 CREATE TABLE `acl_access` (
   `acs_role` varchar(255) NOT NULL,
   `acs_resource` varchar(255) NOT NULL,
-  `acs_accesses` bit(64) NOT NULL,
-  PRIMARY KEY (`acs_role`,`acs_resource`)
+  `acs_operation` varchar(255) NOT NULL,
+  PRIMARY KEY (`acs_role`,`acs_resource`,`acs_operation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -73,8 +73,8 @@ DROP TABLE IF EXISTS `acl_resource`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `acl_resource` (
   `rsc_name` varchar(255) NOT NULL,
-  `rsc_operations` varchar(255) NOT NULL,
-  PRIMARY KEY (`rsc_name`)
+  `rsc_operation` varchar(255) NOT NULL,
+  PRIMARY KEY (`rsc_name`,`rsc_operation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

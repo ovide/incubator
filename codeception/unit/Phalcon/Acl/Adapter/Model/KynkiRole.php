@@ -5,7 +5,7 @@
  * Description of ExtrangeRoleImplementation
  * @author Albert Ovide <albert@ovide.net>
  */
-class ExtrangeRoleImplementation extends \Phalcon\Mvc\Model implements Role
+class KynkiRole extends \Phalcon\Mvc\Model implements Role
 {
 	protected $description = '';
 	protected $name;

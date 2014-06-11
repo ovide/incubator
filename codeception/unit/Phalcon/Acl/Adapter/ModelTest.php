@@ -1,9 +1,9 @@
 <?php namespace Phalcon\Acl\Adapter;
 use Codeception\Util\Stub;
 
-require_once __DIR__.'/Model/ExtrangeAccessImplementation.php';
-require_once __DIR__.'/Model/ExtrangeResourceImplementation.php';
-require_once __DIR__.'/Model/ExtrangeRoleImplementation.php';
+require_once __DIR__.'/Model/KynkiAccess.php';
+require_once __DIR__.'/Model/KynkiResource.php';
+require_once __DIR__.'/Model/KynkiRole.php';
 
 class ModelTest extends \Codeception\TestCase\Test
 {
@@ -24,11 +24,8 @@ class ModelTest extends \Codeception\TestCase\Test
         $di->set('db', function(){
 			$events = new \Phalcon\Events\Manager();
 			$events->attach('db:beforeQuery', function(\Phalcon\Events\Event $event, $connection){
-				//echo "EVENT\n";
-				//print_r($event->getData());
-				//echo "======\n";
-				//echo $connection->getRealSQLStatement().';'.PHP_EOL;
-				return true;
+				print_r($event->getData());
+				echo $connection->getRealSQLStatement().';'.PHP_EOL;
 			});
             $con = new \Phalcon\Db\Adapter\Pdo\Mysql(array(
                 'host'     => 'localhost',
@@ -51,9 +48,9 @@ class ModelTest extends \Codeception\TestCase\Test
 		};
 		\Phalcon\Mvc\Model::setup(array('notNullValidations' => false));
         $this->acl = new Model(
-			'\Phalcon\Acl\Adapter\Model\ExtrangeRoleImplementation',
-            '\Phalcon\Acl\Adapter\Model\ExtrangeResourceImplementation',
-            '\Phalcon\Acl\Adapter\Model\ExtrangeAccessImplementation'
+			'\Phalcon\Acl\Adapter\Model\KynkiRole',
+            '\Phalcon\Acl\Adapter\Model\KynkiResource',
+            '\Phalcon\Acl\Adapter\Model\KynkiAccess'
         );
         $this->acl->setDefaultAction(\Phalcon\Acl::DENY);
     }
@@ -72,12 +69,11 @@ class ModelTest extends \Codeception\TestCase\Test
 	public function testModel()
 	{
 		$I = $this->codeGuy;
-		$role = new Model\ExtrangeRoleImplementation();
+		$role = new Model\KynkiRole();
 		$role->setName('testName');
 		$role->save();
 		$I->seeInDatabase('acl_role', array('rl_name' => 'testName'));
 	}
-
     public function testRole()
     {
         $I = $this->codeGuy;
@@ -95,23 +91,38 @@ class ModelTest extends \Codeception\TestCase\Test
         $this->assertTrue($this->acl->isResource('resource'));
 		$this->acl->addResource(new \Phalcon\Acl\Resource('new_resource'), array('add','edit','delete'));
 		$this->assertTrue($this->acl->isResource('new_resource'));
-        $I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operations' => ''));
-		$I->seeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operations' => 'add,edit,delete'));
+        $I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operation' => ''));
+		$I->seeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'add'));
+		$I->seeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'edit'));
+		$I->seeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'delete'));
 		$this->acl->addResourceAccess('resource', array('add'));
-		$I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operations' => 'add'));
+		$I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operation' => 'add'));
 		$this->acl->addResourceAccess('resource', array('edit'));
-		$I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operations' => 'add,edit'));
+		$I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operation' => 'add'));
+		$I->seeInDatabase('acl_resource', array('rsc_name' => 'resource', 'rsc_operation' => 'edit'));
 		$this->acl->dropResourceAccess('new_resource', array('edit', 'none'));
-		$I->seeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operations' => 'add,delete'));
+		$I->dontSeeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'edit'));
+		$I->dontSeeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'none'));
 		$this->acl->dropResourceAccess('new_resource', array('add', 'edit', 'delete'));
-		$I->seeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operations' => ''));
+		$I->dontSeeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'add'));
+		$I->dontSeeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'edit'));
+		$I->dontSeeInDatabase('acl_resource', array('rsc_name' => 'new_resource', 'rsc_operation' => 'delete'));
     }
     public function testGetResources()
     {
+		$memory = new \Phalcon\Acl\Adapter\Memory();
+
+
         $this->acl->addResource(new \Phalcon\Acl\Resource('resource'));
+		$memory->addResource(new \Phalcon\Acl\Resource('resource'));
         $this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
+		$memory->addResourceAccess('resource', array('add', 'edit', 'delete'));
         $resources = $this->acl->getResources();
-        $this->assertEquals('resource', $resources[0]->getName());
+		$memoryResources = $memory->getResources();
+		$this->assertTrue(is_array($resources));
+		$this->assertInstanceOf('\Phalcon\Acl\ResourceInterface', $resources[0]);
+        $this->assertEquals($memoryResources[0]->getName(), $resources[0]->getName());
+		$this->assertEquals(count($memoryResources), count($resources));
     }
     public function testGetRoles()
     {
@@ -121,9 +132,7 @@ class ModelTest extends \Codeception\TestCase\Test
         $this->assertEquals('root', $roles[0]->getName());
         $this->assertEquals('tester', $roles[1]->getName());
     }
-/*
-
-
+	/*
     public function testAllow()
     {
         $I = $this->codeGuy;
@@ -140,8 +149,8 @@ class ModelTest extends \Codeception\TestCase\Test
             'access_name'    => 'add',
             'allowed'        => '1'
         ));
-    }
-
+    }*/
+/*
     public function testDeny()
     {
         $I = $this->codeGuy;

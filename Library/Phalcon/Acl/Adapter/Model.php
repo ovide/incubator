@@ -96,7 +96,7 @@ class Model extends Adapter
 		if(count($accessList)) {
 			$model->addOperations($accessList);
 		}
-        $model->save();
+		$model->save();
     }
 
     /**
@@ -153,8 +153,8 @@ class Model extends Adapter
 		$AccessModel   = $this->modelAccess;
 		$RoleModel     = $this->modelRole;
 		$ResourceModel = $this->modelResource;
-		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $role)));
-		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource)));
+		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $roleName)));
+		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
 		$AccessModel::allow($roleRow, $resourceRow, $access);
     }
 
@@ -200,8 +200,14 @@ class Model extends Adapter
      */
     public function getResources()
     {
+		$result = array();
 		$ResourceModel = $this->modelResource;
-		return $ResourceModel::find();
+		/* @var $rows \Phalcon\Mvc\Model\ResultsetInterface */
+		//$rows = $ResourceModel::find();
+		$rows = $ResourceModel::query(array('group' => 'name'));
+		foreach ($rows as $row)
+			$result[$row->getName()] = new Resource($row->getName(), $row->getDescription());
+		return array_values($result);
 	}
 
     /**
