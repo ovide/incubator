@@ -51,6 +51,7 @@ CREATE TABLE `acl_access` (
   `acs_role` varchar(255) NOT NULL,
   `acs_resource` varchar(255) NOT NULL,
   `acs_operation` varchar(255) NOT NULL,
+  `acl_access` tinyint NOT NULL,
   PRIMARY KEY (`acs_role`,`acs_resource`,`acs_operation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;

@@ -20,14 +20,6 @@ class KynkiRole extends \Phalcon\Mvc\Model implements Role
 		);
 	}
 
-	public function notSave()
-	{
-		echo 'NOT SAVE'.PHP_EOL;
-		foreach($this->getMessages() as $message){
-			echo "ERROR ".$message->getMessage();
-		}
-	}
-
 	public function initialize()
 	{
 		$this->setSource('acl_role');
