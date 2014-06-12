@@ -55,15 +55,30 @@ class Model extends Adapter
      *
      * @param string $roleName
      * @param string $roleToInherit
-     */
-    public function addInherit($roleName, $roleToInherit)
+	 * @throws Exception
+	 */
+	public function addInherit($roleName, $roleToInherit)
     {
 		$Role = $this->modelRole;
-		if (($child = $Role::byName($roleName)) && $this->isRole($roleToInherit)) {
+		if (($child = $Role::byName($roleName)) && $ancestor = $Role::byName($roleToInherit)) {
+			if ($this->isRecursiveInherit($ancestor, $roleName))
+				throw new Exception("$roleName can't inherhit $roleToInherit  because recursive inheritance");
 			$child->setInherit($roleToInherit);
 			$r = $child->update();
 		}
     }
+
+	/**
+	 *
+	 * @param \Phalcon\Acl\Adapter\Model\Role $role
+	 * @return array
+	 */
+	private function isRecursiveInherit(Model\Role $roleToInherit, $roleName)
+	{
+		while ($roleToInherit = $roleToInherit->getInherit())
+			if ($roleToInherit->getName() == $roleName) return true;
+		return false;
+	}
 
     /**
      * Adds a resource to the ACL list
@@ -257,7 +272,7 @@ class Model extends Adapter
 		echo "\n\n";
 		$return = $this->allowed($roleRow, $resourceRow, $access);
 		echo "\n----$return----\n";
-		
+
 		if ($return !== null) $allowed = $return;
 		return (bool)$allowed;
     }

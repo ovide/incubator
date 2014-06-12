@@ -203,11 +203,21 @@ class ModelTest extends \Codeception\TestCase\Test
 
 	public function testAvoidRecursiveInherits()
 	{
-
+		$this->acl->addRole(new \Phalcon\Acl\Role('tester'));
+		$this->acl->addRole(new \Phalcon\Acl\Role('user'));
+		$this->acl->addRole(new \Phalcon\Acl\Role('admin'));
+		$this->acl->addInherit('admin', 'user');
+		$this->acl->addInherit('tester', 'admin');
+		try {
+			$this->acl->addInherit('user', 'tester');
+			$this->assertTrue(true, "Should throw a \Phalcon\Acl\Exception");
+		} catch (\Phalcon\Acl\Exception $ex) {
+			$this->assertTrue(true);
+		}
 	}
 
 	public function testClearUselessRows()
 	{
-		
+
 	}
 }
