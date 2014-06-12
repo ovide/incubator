@@ -235,7 +235,7 @@ class Model extends Adapter
     }
 
     /**
-     * Check whether a role is allowed to access an action from a resource
+     * Check whether a role or inherited is allowed to access an action from a resource
      *
      * @param  string $role
      * @param  string $resource
@@ -244,19 +244,50 @@ class Model extends Adapter
      */
     public function isAllowed($role, $resource, $access)
     {
+		$allowed = $this->_defaultAccess;
 		$this->_activeRole     = $role;
 		$this->_activeResource = $resource;
 		$this->_activeAccess   = $access;
 
-		$AccessModel   = $this->modelAccess;
-		$RoleModel     = $this->modelRole;
-		$ResourceModel = $this->modelResource;
-		$roleRow       = $RoleModel::byName($role);
-		$resourceRow   = $ResourceModel::byName($resource);
-		$value         = $AccessModel::getAccess($roleRow->getName(), $resourceRow->getName(), $access);
+		$RoleModel             = $this->modelRole;
+		$ResourceModel         = $this->modelResource;
 
-		return (bool)(($value !== null) ? $value : $this->_defaultAccess);
+		$roleRow               = $RoleModel::byName($role);
+		$resourceRow           = $ResourceModel::byName($resource);
+		echo "\n\n";
+		$return = $this->allowed($roleRow, $resourceRow, $access);
+		echo "\n----$return----\n";
+		
+		if ($return !== null) $allowed = $return;
+		return (bool)$allowed;
     }
+
+    /**
+     * Check whether a role or inherited role is allowed to access an action from a resource
+     *
+     * @param  Phalcon\Acl\Adapter\Model\Role $role
+     * @param  Phalcon\Acl\Adapter\Model\Resource $resource
+     * @param  string $operation
+     * @return boolean
+     */
+	private function allowed(Model\Role $role, Model\Resource $resource, $operation)
+	{
+		echo __FUNCTION__.' '.$role->getName().' '.$resource->getName()." $operation\n";
+		$access = null;
+		/* @var $roleRow Phalcon\Acl\Adapter\Model\Role */
+		$AccessModel   = $this->modelAccess;
+
+		$inherit       = $role->getInherit();
+
+		if ($inherit && $inherit->getName() != $this->_activeRole) {
+			$parentAccess = $this->allowed($inherit, $resource, $operation);
+			if ($parentAccess !== null) $access = $parentAccess;
+		}
+
+		$row  = $AccessModel::getAccess($role->getName(), $resource->getName(), $operation);
+		if ($row) $access = $row;
+		return $access;
+	}
 
     /**
      * Check whether resource exist in the resources list

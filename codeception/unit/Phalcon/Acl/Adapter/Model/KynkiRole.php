@@ -70,5 +70,11 @@ class KynkiRole extends \Phalcon\Mvc\Model implements Role
 		return self::find(array('group' => 'name'));
 	}
 
-}
+	/**
+	 * @return KynkiRole
+	 */
+	public function getInherit() {
+		return self::byName($this->inherits);
+	}
 
+}

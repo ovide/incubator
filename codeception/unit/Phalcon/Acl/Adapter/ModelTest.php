@@ -7,16 +7,14 @@ require_once __DIR__.'/Model/KynkiRole.php';
 
 class ModelTest extends \Codeception\TestCase\Test
 {
-   /**
+    /**
     * @var \CodeGuy
     */
     protected $codeGuy;
-
     /**
      * @var Model
      */
     protected $acl;
-
 
     protected function _before()
     {
@@ -53,7 +51,6 @@ class ModelTest extends \Codeception\TestCase\Test
         );
         $this->acl->setDefaultAction(\Phalcon\Acl::DENY);
     }
-
     protected function _after()
     {
 		$di = \Phalcon\DI::getDefault();
@@ -64,7 +61,6 @@ class ModelTest extends \Codeception\TestCase\Test
 		unset($di);
 		unset($this->acl);
     }
-
 	public function testModel()
 	{
 		$I = $this->codeGuy;
@@ -146,10 +142,8 @@ class ModelTest extends \Codeception\TestCase\Test
         $this->assertEquals('root', $roles[0]->getName());
         $this->assertEquals('tester', $roles[1]->getName());
     }
-
     public function testAccess()
     {
-        $I = $this->codeGuy;
         $this->acl->addResource(new \Phalcon\Acl\Resource('resource'));
         $this->acl->addRole(new \Phalcon\Acl\Role('tester'));
         $this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
@@ -170,4 +164,50 @@ class ModelTest extends \Codeception\TestCase\Test
 		$this->assertFalse($this->acl->isAllowed('tester', 'resource', 'fakeOperation'));
 		$this->assertTrue($this->acl->isAllowed('tester', 'resource', 'delete'));
     }
+	public function testInheritedAccess()
+	{
+		$I = $this->codeGuy;
+
+		$I->amGoingTo("add a resource 'resource'");
+		$this->acl->addResource(new \Phalcon\Acl\Resource('resource'));
+		$I->amGoingTo("add 'add', 'edit', 'delete' operations to 'resource'");
+		$this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
+		$I->amGoingTo("add roles 'tester', 'user' and 'admin'");
+		$this->acl->addRole(new \Phalcon\Acl\Role('tester'));
+		$this->acl->addRole(new \Phalcon\Acl\Role('user'));
+		$this->acl->addRole(new \Phalcon\Acl\Role('admin'));
+		$I->amGoingTo("make tester inherits from user");
+		$this->acl->addInherit('tester', 'user');
+
+		$I->amGoingTo("Grant 'add' access to 'user'");
+		$this->acl->allow('user', 'resource', 'add');
+		$I->amGoingTo("Grant 'edit' access to 'user'");
+		$this->acl->allow('tester', 'resource', 'edit');
+		$I->amGoingTo("Grant 'delete' access to 'admin'");
+		$this->acl->allow('admin', 'resource', 'delete');
+
+		$I->wantToTest("that 'tester' is allowed to 'add' and 'edit', but not 'delete'");
+		$this->assertTrue($this->acl->isAllowed('tester', 'resource', 'add'));
+        $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'edit'));
+        $this->assertFalse($this->acl->isAllowed('tester', 'resource', 'delete'));
+
+		$I->amGoingTo("make admin inherits from user");
+		$this->acl->addInherit('admin', 'user');
+		$I->amGoingTo("make tester inherits from admin");
+		$this->acl->addInherit('tester', 'admin');
+		$I->wantToTest("that 'tester' is allowed to 'add' and 'edit' and 'delete'");
+		$this->assertTrue($this->acl->isAllowed('tester', 'resource', 'add'));
+        $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'edit'));
+        $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'delete'));
+	}
+
+	public function testAvoidRecursiveInherits()
+	{
+
+	}
+
+	public function testClearUselessRows()
+	{
+		
+	}
 }

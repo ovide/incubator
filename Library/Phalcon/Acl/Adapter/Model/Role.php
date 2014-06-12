@@ -18,6 +18,10 @@ interface Role extends ModelInterface, RoleInterface
 	 */
     public function setInherit($inherit);
 	/**
+	 * @return Role
+	 */
+	public function getInherit();
+	/**
 	 *
 	 */
     public function clearInherit();
