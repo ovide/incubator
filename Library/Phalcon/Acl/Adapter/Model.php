@@ -65,10 +65,9 @@ class Model extends Adapter
     public function addInherit($roleName, $roleToInherit)
     {
 		$Role = $this->modelRole;
-		if ($this->isRole($roleName) && $this->isRole($roleToInherit))
+		if (($child = $Role::byName($roleName)) && $this->isRole($roleToInherit))
 		{
-			$child = $Role::findFirst(array('name = :name:', 'bind' => array('name' => $roleName)));
-            $child->setInherit($roleToInherit);
+			$child->setInherit($roleToInherit);
 			$r = $child->update();
 		}
     }
@@ -85,18 +84,24 @@ class Model extends Adapter
      */
     public function addResource($resource, $accessList=null)
     {
+		$new           = false;
 		$ResourceModel = $this->modelResource;
-        $model = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource->getName())));
+        $model         = $ResourceModel::byName($resource->getName());
+
         if (!$model) {
+			$new   = true;
             $model = new $ResourceModel();
             $model->setName($resource->getName());
             $model->setDescription($resource->getDescription());
         }
 
-		if(count($accessList)) {
+		$hasList = count($accessList);
+		if ($hasList) {
 			$model->addOperations($accessList);
 		}
-		$model->save();
+
+		if ($new || $hasList !== null)
+			$model->save();
     }
 
     /**
@@ -107,8 +112,10 @@ class Model extends Adapter
      */
     public function addResourceAccess($resourceName, $accessList)
     {
+		if (is_string($accessList))
+			$accessList = array($accessList);
 		$ResourceModel = $this->modelResource;
-		$model = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
+		$model = $ResourceModel::byName($resourceName);
 		if ($model && count($accessList))
 		{
 			$model->addOperations($accessList);
@@ -128,7 +135,7 @@ class Model extends Adapter
     {
 		$Role = $this->modelRole;
 		if ($this->isRole($role->getName()))
-			$model = $Role::findFirst(array('name = :name:', 'bind' => array('name' => $role->getName())));
+			$model = $Role::byName($role->getName());
         else
 		{
             $model = new $Role();
@@ -153,10 +160,11 @@ class Model extends Adapter
 		$AccessModel   = $this->modelAccess;
 		$RoleModel     = $this->modelRole;
 		$ResourceModel = $this->modelResource;
-		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $roleName)));
-		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
-		$AccessModel::allow($roleRow, $resourceRow, $access);
-    }
+		$roleRow       = $RoleModel::byName($roleName);
+		$resourceRow   = $ResourceModel::byName($resourceName);
+		if ($roleRow && $resourceRow)
+			$AccessModel::allow($roleRow, $resourceRow, $access);
+}
 
     /**
      * Deny access to a role on a resource
@@ -171,8 +179,8 @@ class Model extends Adapter
 		$AccessModel   = $this->modelAccess;
 		$RoleModel     = $this->modelRole;
 		$ResourceModel = $this->modelResource;
-		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $role)));
-		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource)));
+		$roleRow       = $RoleModel::byName($roleName);
+		$resourceRow   = $ResourceModel::byName($resourceName);
 		$AccessModel::deny($roleRow, $resourceRow, $access);
     }
 
@@ -185,7 +193,7 @@ class Model extends Adapter
     public function dropResourceAccess($resourceName, $accessList)
     {
 		$ResourceModel = $this->modelResource;
-		$model = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resourceName)));
+		$model = $ResourceModel::byName($resourceName);
 		if ($model && count($accessList))
 		{
 			$model->dropOperations($accessList);
@@ -203,11 +211,10 @@ class Model extends Adapter
 		$result = array();
 		$ResourceModel = $this->modelResource;
 		/* @var $rows \Phalcon\Mvc\Model\ResultsetInterface */
-		//$rows = $ResourceModel::find();
-		$rows = $ResourceModel::query(array('group' => 'name'));
+		$rows = $ResourceModel::getAll();
 		foreach ($rows as $row)
-			$result[$row->getName()] = new Resource($row->getName(), $row->getDescription());
-		return array_values($result);
+			$result[] = new Resource($row->getName(), $row->getDescription());
+		return $result;
 	}
 
     /**
@@ -217,8 +224,13 @@ class Model extends Adapter
      */
     public function getRoles()
     {
+		$result = array();
+		/* @var $rows \Phalcon\Mvc\Model\ResultsetInterface */
 		$RolesModel = $this->modelRole;
-		return $RolesModel::find();
+		$rows = $RolesModel::getAll();
+		foreach ($rows as $row)
+			$result[] = new Role($row->getName(), $row->getDescription());
+		return $result;
     }
 
     /**
@@ -234,9 +246,9 @@ class Model extends Adapter
 		$AccessModel   = $this->modelAccess;
 		$RoleModel     = $this->modelRole;
 		$ResourceModel = $this->modelResource;
-		$roleRow       = $RoleModel::findFirst(array('name = :name:', 'bind' => array('name' => $role)));
-		$resourceRow   = $ResourceModel::findFirst(array('name = :name:', 'bind' => array('name' => $resource)));
-		return $AccessModel::isAllowed($roleRow, $resourceRow, $access);
+		$roleRow       = $RoleModel::byName($role);
+		$resourceRow   = $ResourceModel::byName($resource);
+		return $AccessModel::isAllowed($roleRow->getName(), $resourceRow->getName(), $access);
     }
 
     /**
@@ -261,7 +273,7 @@ class Model extends Adapter
     public function isRole($roleName)
     {
 		$Role = $this->modelRole;
-		$row = $Role::findFirst(array('name = :name:', 'bind' => array('name' => $roleName)));
+		$row = $Role::byName($roleName);
 		return (bool) $row;
     }
 

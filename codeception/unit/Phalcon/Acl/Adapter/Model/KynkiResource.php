@@ -10,7 +10,6 @@ class KynkiResource extends \Phalcon\Mvc\Model implements Resource
 	protected $name;
 	protected $operation = '';
 
-
 	public function columnMap()
 	{
 		return array(
@@ -77,5 +76,29 @@ class KynkiResource extends \Phalcon\Mvc\Model implements Resource
 
 	public function setName($name) {
 		$this->name = $name;
+	}
+
+	public static function byName($name)
+	{
+		return self::findFirst(array('name = :name:',
+			'bind'      => array('name' => $name),
+			'hydration' => \Phalcon\Mvc\Model\Resultset::HYDRATE_OBJECTS
+		));
+	}
+
+	public static function getAll()
+	{
+		return self::find(array('group' => 'name'));
+	}
+	/**
+	 * @return string[]
+	 */
+	public function getOperations()
+	{
+		$operations = array();
+		$rows = KynkiResource::find(array('name= :name:', 'bind' => array('name' => $this->name)));
+		foreach ($rows as $row)
+			$operations[] = $row->operation;
+		return $operations;
 	}
 }

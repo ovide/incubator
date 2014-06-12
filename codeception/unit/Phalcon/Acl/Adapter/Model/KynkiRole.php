@@ -64,5 +64,19 @@ class KynkiRole extends \Phalcon\Mvc\Model implements Role
 	{
 		$this->name = $name;
 	}
+
+	public static function byName($name)
+	{
+		return self::findFirst(array('name = :name:',
+			'bind'      => array('name' => $name),
+			'hydration' => \Phalcon\Mvc\Model\Resultset::HYDRATE_OBJECTS
+		));
+	}
+
+	public static function getAll()
+	{
+		return self::find(array('group' => 'name'));
+	}
+
 }
 

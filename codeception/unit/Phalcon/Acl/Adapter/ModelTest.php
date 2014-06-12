@@ -23,9 +23,8 @@ class ModelTest extends \Codeception\TestCase\Test
         $di = new \Phalcon\DI\FactoryDefault();
         $di->set('db', function(){
 			$events = new \Phalcon\Events\Manager();
-			$events->attach('db:beforeQuery', function(\Phalcon\Events\Event $event, $connection){
-				print_r($event->getData());
-				echo $connection->getRealSQLStatement().';'.PHP_EOL;
+			$events->attach('db:afterQuery', function(\Phalcon\Events\Event $event, \Phalcon\Db\Adapter\Pdo\Mysql $connection){
+				echo $connection->getSQLStatement().PHP_EOL;
 			});
             $con = new \Phalcon\Db\Adapter\Pdo\Mysql(array(
                 'host'     => 'localhost',
@@ -111,14 +110,13 @@ class ModelTest extends \Codeception\TestCase\Test
     public function testGetResources()
     {
 		$memory = new \Phalcon\Acl\Adapter\Memory();
-
-
         $this->acl->addResource(new \Phalcon\Acl\Resource('resource'));
 		$memory->addResource(new \Phalcon\Acl\Resource('resource'));
         $this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
 		$memory->addResourceAccess('resource', array('add', 'edit', 'delete'));
         $resources = $this->acl->getResources();
 		$memoryResources = $memory->getResources();
+
 		$this->assertTrue(is_array($resources));
 		$this->assertInstanceOf('\Phalcon\Acl\ResourceInterface', $resources[0]);
         $this->assertEquals($memoryResources[0]->getName(), $resources[0]->getName());
@@ -126,68 +124,50 @@ class ModelTest extends \Codeception\TestCase\Test
     }
     public function testGetRoles()
     {
+		$I = $this->codeGuy;
+
+		$memory = new \Phalcon\Acl\Adapter\Memory();
         $this->acl->addRole(new \Phalcon\Acl\Role('tester'));
+		$memory->addRole(new \Phalcon\Acl\Role('tester'));
         $this->acl->addRole(new \Phalcon\Acl\Role('root'));
+		$memory->addRole(new \Phalcon\Acl\Role('root'));
         $roles = $this->acl->getRoles();
+		$memoryRoles = $memory->getRoles();
+
+		$I->amGoingTo('check roles is an array');
+		$this->assertTrue(is_array($roles));
+		$I->amGoingTo('check roles items are instance of \Phalcon\Acl\RoleInterface');
+		$this->assertInstanceOf('\Phalcon\Acl\RoleInterface', $roles[0]);
+		$I->amGoingTo('check that this adapter works like \Phalcon\Acl\Adapter\Memory');
+		$this->assertTrue(in_array($roles[0], $memoryRoles));
+		$this->assertTrue(in_array($roles[1], $memoryRoles));
+		$this->assertEquals(count($memoryRoles), count($roles));
+		$I->amGoingTo('check that I get the inserted role names');
         $this->assertEquals('root', $roles[0]->getName());
         $this->assertEquals('tester', $roles[1]->getName());
     }
-	/*
-    public function testAllow()
+
+    public function testAccess()
     {
         $I = $this->codeGuy;
-        $this->acl->addResource('resource');
-        $this->acl->addRole('tester');
+        $this->acl->addResource(new \Phalcon\Acl\Resource('resource'));
+        $this->acl->addRole(new \Phalcon\Acl\Role('tester'));
         $this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
         $this->acl->allow('tester', 'resource', 'add');
         $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'add'));
         $this->assertFalse($this->acl->isAllowed('tester', 'resource', 'edit'));
         $this->assertFalse($this->acl->isAllowed('tester', 'resource', 'delete'));
-        $I->seeInDatabase('access_list', array(
-            'roles_name'     => 'tester',
-            'resources_name' => 'resource',
-            'access_name'    => 'add',
-            'allowed'        => '1'
-        ));
-    }*/
-/*
-    public function testDeny()
-    {
-        $I = $this->codeGuy;
-        $this->acl->addResource('resource');
-        $this->acl->addRole('tester');
-        $this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
-        $this->acl->allow('tester', 'resource', array('add', 'edit', 'delete'));
-        $this->acl->deny('tester', 'resource', 'add');
-        $this->assertFalse($this->acl->isAllowed('tester', 'resource', 'add'));
+		$this->acl->allow('tester', 'resource', array('add', 'edit', 'delete', 'fakeOperation'));
+		$this->assertTrue($this->acl->isAllowed('tester', 'resource', 'add'));
         $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'edit'));
         $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'delete'));
-        $I->seeInDatabase('access_list', array(
-            'roles_name'     => 'tester',
-            'resources_name' => 'resource',
-            'access_name'    => 'add',
-            'allowed'        => '0'
-        ));
+		$this->assertFalse($this->acl->isAllowed('tester', 'resource', 'fakeOperation'));
+		$this->acl->deny('tester', 'resource', 'add');
+		$this->assertFalse($this->acl->isAllowed('tester', 'resource', 'add'));
+		$this->acl->deny('tester', 'resource', array('add', 'edit', 'fakeOperation'));
+		$this->assertFalse($this->acl->isAllowed('tester', 'resource', 'add'));
+		$this->assertFalse($this->acl->isAllowed('tester', 'resource', 'edit'));
+		$this->assertFalse($this->acl->isAllowed('tester', 'resource', 'fakeOperation'));
+		$this->assertTrue($this->acl->isAllowed('tester', 'resource', 'delete'));
     }
-
-    public function testIsAllowed()
-    {
-        $I = $this->codeGuy;
-        $this->acl->addResource('resource');
-        $this->acl->addRole('tester');
-        $this->acl->addResourceAccess('resource', array('add', 'edit', 'delete'));
-        $this->acl->allow('tester', 'resource', array('add', 'edit', 'delete'));
-        $this->acl->deny('tester', 'resource', 'add');
-        $this->assertFalse($this->acl->isAllowed('tester', 'resource', 'add'));
-        $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'edit'));
-        $this->assertTrue($this->acl->isAllowed('tester', 'resource', 'delete'));
-        $I->seeInDatabase('access_list', array(
-            'roles_name'     => 'tester',
-            'resources_name' => 'resource',
-            'access_name'    => 'add',
-            'allowed'        => '0'
-        ));
-    }
- *
- */
 }

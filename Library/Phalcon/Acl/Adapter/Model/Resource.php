@@ -22,4 +22,17 @@ interface Resource extends ModelInterface, ResourceInterface
      * @param string[] $operations
      */
     public function dropOperations($operations);
+	/**
+	 * @param string $name
+	 * @resturn Resource
+	 */
+	public static function byName($name);
+	/**
+	 * @return string[]
+	 */
+	public static function getAll();
+	/**
+	 * @return string[]
+	 */
+	public function getOperations();
 }
